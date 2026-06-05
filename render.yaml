@@ -5,8 +5,8 @@ services:
     plan: standard
     region: oregon
     branch: main
-    buildCommand: npm install --include=dev && npm run build
-    startCommand: node render-start.mjs
+    buildCommand: npm install --include=dev && npm run build && test -f dist/server/index.mjs
+    startCommand: "sh -c 'test -f dist/server/index.mjs || npm run build && node render-start.mjs'"
     envVars:
       - key: NODE_ENV
         value: production
