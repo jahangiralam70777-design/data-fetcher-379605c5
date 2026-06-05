@@ -7,12 +7,20 @@ import { fileURLToPath } from "url";
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
 const PORT = process.env.PORT || 10000;
 
-const serverPath = join(__dirname, "dist/server/index.mjs");
-if (!existsSync(serverPath)) {
-  console.error("Build output not found at", serverPath);
+const candidates = [
+  "dist/server/server.js",
+  "dist/server/index.mjs",
+  "dist/server/index.js",
+];
+const serverPath = candidates
+  .map((p) => join(__dirname, p))
+  .find((p) => existsSync(p));
+if (!serverPath) {
+  console.error("Build output not found. Looked for:", candidates.join(", "));
   console.error("Run 'npm run build' first.");
   process.exit(1);
 }
+console.log("Loading server entry:", serverPath);
 
 const { default: worker } = await import(serverPath);
 
