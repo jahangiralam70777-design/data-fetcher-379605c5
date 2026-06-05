@@ -72,6 +72,34 @@ const server = http.createServer(async (req, res) => {
       `http://${req.headers.host || "localhost"}`
     );
 
+    // Serve built static assets directly from dist/client before invoking
+    // the SSR worker. This guarantees CSS/JS/fonts/images load in production
+    // even if the worker's asset binding behaves differently on the host.
+    if (req.method === "GET" || req.method === "HEAD") {
+      const p = url.pathname;
+      if (
+        p.startsWith("/assets/") ||
+        p.startsWith("/_build/") ||
+        p === "/favicon.ico" ||
+        p === "/robots.txt" ||
+        p === "/sitemap.xml" ||
+        /\.(js|mjs|css|map|woff2?|ttf|otf|eot|svg|png|jpg|jpeg|gif|webp|avif|ico|json|txt|wasm)$/i.test(p)
+      ) {
+        const assetResponse = await serveAsset(p);
+        if (assetResponse) {
+          const h = {};
+          for (const [k, v] of assetResponse.headers) h[k] = v;
+          if (p.startsWith("/assets/") || p.startsWith("/_build/")) {
+            h["cache-control"] = "public, max-age=31536000, immutable";
+          }
+          res.writeHead(assetResponse.status, h);
+          const buf = await assetResponse.arrayBuffer();
+          res.end(req.method === "HEAD" ? undefined : Buffer.from(buf));
+          return;
+        }
+      }
+    }
+
     const headers = new Headers();
     for (const [key, values] of Object.entries(req.headers)) {
       if (!values) continue;
